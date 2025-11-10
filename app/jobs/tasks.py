@@ -1,25 +1,41 @@
 from app.jobs.celery_worker import celery_app
+from app.utils.image_workflow import generate_image_from_bytes
 from app.utils.minio import generate_presigned_url, upload_bytes_to_minio
 
 
 @celery_app.task(bind=True, name="generate_image_task")
-def generate_image_task(self, category: str):
+def generate_image_task(self, file_bytes: bytes, mime_type: str, category: str):
     """
-    Generate image for given category using Celery task.
+    Generate image for given category using Celery task (runs in background worker).
 
     Args:
+        file_bytes: Image file bytes (already validated and converted)
+        mime_type: MIME type of image
         category: Category name (Top or Bot)
 
     Returns:
-        Status message
+        Dict with generated image data and metadata
     """
     try:
         print(f"[Celery] generate_image_task started for category: {category}")
-        print(f"[Celery] generate_image_task completed for category: {category}")
-        return {"status": "completed", "category": category}
+
+        # Call synchronous generate_image_from_bytes
+        generated_image_bytes = generate_image_from_bytes(file_bytes, mime_type, category)
+
+        if not generated_image_bytes:
+            print(f"[Celery] ERROR: No image generated for category: {category}")
+            return {"success": False, "category": category}
+
+        print(f"[Celery] generate_image_task completed for {category}: {len(generated_image_bytes)} bytes")
+        return {
+            "success": True,
+            "category": category,
+            "image_bytes": generated_image_bytes,
+        }
     except Exception as e:
         print(f"[Celery] ERROR in generate_image_task: {e}")
         self.retry(exc=e, countdown=5)
+
 
 
 @celery_app.task(bind=True, name="upload_image_task")

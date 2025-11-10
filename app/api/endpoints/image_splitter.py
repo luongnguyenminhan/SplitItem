@@ -19,7 +19,7 @@ async def split_image(image_file: UploadFile = File(...)) -> dict:
     """
     try:
         print(f"[split_image] Received request with file: {image_file.filename}")
-
+        start_time = __import__('time').time()
         # Call service layer to handle all business logic
         generated_items = await generate_and_upload_images(
             image_file=image_file,
@@ -27,7 +27,8 @@ async def split_image(image_file: UploadFile = File(...)) -> dict:
         )
 
         print(f"[split_image] Successfully processed {len(generated_items)} items")
-
+        end_time = __import__('time').time()
+        print(f"[split_image] Total processing time: {end_time - start_time:.2f} seconds")
         return {
             "success": True,
             "message": f"Successfully generated {len(generated_items)} images",

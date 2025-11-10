@@ -2,7 +2,6 @@ import io
 import mimetypes
 
 import google.genai as genai
-from fastapi import UploadFile
 from google.genai import types
 from PIL import Image
 
@@ -71,12 +70,13 @@ def _validate_and_convert_image(file_content: bytes) -> tuple[bytes, str]:
         return file_content, "image/jpeg"
 
 
-async def generate_image(upload_file: UploadFile, category: str = "Top") -> bytes:
+def generate_image_from_bytes(file_bytes: bytes, mime_type: str, category: str = "Top") -> bytes:
     """
     Generate a new image based on category prompt using Gemini API.
 
     Args:
-        upload_file: Uploaded reference image file
+        file_bytes: Image file bytes (already validated and converted)
+        mime_type: MIME type of image (e.g., "image/jpeg")
         category: Category key from CATEGORIES (Top or Bot)
 
     Returns:
@@ -87,15 +87,7 @@ async def generate_image(upload_file: UploadFile, category: str = "Top") -> byte
 
         # Get prompt from category
         prompt = CATEGORIES.get(category, CATEGORIES["Top"])
-        print(f"[generate_image] Using prompt for category: {category}")
-
-        # Read file content
-        file_content = await upload_file.read()
-        print(f"[generate_image] File read: {len(file_content)} bytes")
-
-        # Validate and convert image to JPEG for compatibility
-        converted_bytes, mime_type = _validate_and_convert_image(file_content)
-        print(f"[generate_image] Image validated and converted, final MIME type: {mime_type}")
+        print(f"[generate_image_from_bytes] Using prompt for category: {category}")
 
         # Initialize Gemini client
         client = _get_gemini_client()
@@ -103,7 +95,7 @@ async def generate_image(upload_file: UploadFile, category: str = "Top") -> byte
 
         # Create image part from converted bytes
         image_part = types.Part.from_bytes(
-            data=converted_bytes,
+            data=file_bytes,
             mime_type=mime_type,
         )
 
